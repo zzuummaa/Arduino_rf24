@@ -11,10 +11,9 @@ macro(link_rf24_libraries target_name)
     link_arduino_library(${target_name} RF24_lib_${target_name} ${board_id})
 endmacro()
 
-#set(ARDUINO_SDK_LIBRARIES_PATH ${ARDUINO_SDK_LIBRARIES_PATH} "C:/Users/Stephan/Documents/Arduino/libraries")
+include_directories(shared)
+file(GLOB_RECURSE SHARED_HEADERS "shared/*.h")
+
 message(STATUS "ARDUINO_SDK_LIBRARIES_PATH: ${ARDUINO_SDK_LIBRARIES_PATH}")
 add_subdirectory(tests)
 add_subdirectory(examples)
-
-#add_arduino_library_example(pingpair_ack_example ${board_id} RF24_lib RF24 pingpair_ack)
-#link_arduino_library(${PROJECT_NAME} RF24_lib ${board_id})

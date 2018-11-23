@@ -46,7 +46,7 @@ char spaces[8];
 unsigned long serialTime = 0;
 
 // A single byte to keep track of the data being sent back and forth
-uint8_t counter[4];
+uint8_t counter[16];
 uint8_t gotBuff[sizeof(counter)];
 char strBuf[sizeof(counter)*2 + 1];
 int successCount = 0;
@@ -103,7 +103,7 @@ void setup() {
     radio.begin();
     radio.setAutoAck(true);
     radio.enableAckPayload();               // Allow optional ack payloads
-    radio.setRetries(0, 15);                 // Smallest time between retries, max no. of retries
+    radio.setRetries(5, 15);                 // Smallest time between retries, max no. of retries
     radio.setPayloadSize(sizeof(counter));                // Here we are sending 1-byte payloads to test the call-response speed
     if (role == role_ping_out) {
         radio.openWritingPipe(pipes[0]);
@@ -119,28 +119,30 @@ void setup() {
 }
 
 void loop(void) {
+    while (Serial.read() == -1);
 
     if (role == role_ping_out) {
 
         radio.stopListening();                                  // First, stop listening so we can talk.
 
-//        printf("Now sending %s as payload. ", hexStr(counter, sizeof(counter), strBuf));
+        printf("Now sending %s as payload. ", hexStr(counter, sizeof(counter), strBuf));
         unsigned long time = micros();                          // Take the time, and send it.  This will block until complete
         //Called when STANDBY-I mode is engaged (User is finished sending)
         if (!radio.write(counter, sizeof(counter))) {
             failCount++;
-//            printf("failed. sucs/fail: %d/%d%s\r\n", successCount, failCount, spaces);
+            printf("failed. sucs/fail: %d/%d%s\r\n", successCount, failCount, spaces);
         } else {
+            while(!radio.available() && Serial.read() == -1);
             if (!radio.available()) {
                 failCount++;
                 unsigned long tim = micros();
-//                printf("Blank Payload Received. Delay: %1u microsec. sucs/fail: %d/%d.%s\r\n", tim - time, successCount, failCount, spaces);
+                printf("Blank Payload Received. Delay: %1u microsec. sucs/fail: %d/%d.%s\r\n", tim - time, successCount, failCount, spaces);
             } else {
                 successCount++;
                 unsigned long tim = micros();
                 radio.read(gotBuff, sizeof(gotBuff));
-//                printf("Got response %s, delay: %lu microsec. sucs/fail: %d/%d\r\n",
-//                        hexStr(gotBuff, sizeof(gotBuff), strBuf), tim - time, successCount, failCount);
+                printf("Got response %s, delay: %lu microsec. sucs/fail: %d/%d\r\n",
+                        hexStr(gotBuff, sizeof(gotBuff), strBuf), tim - time, successCount, failCount);
                 inc(counter, sizeof(counter));
             }
         }
@@ -164,7 +166,10 @@ void loop(void) {
         while (radio.available(&pipeNo)) {
             memset(gotBuff, 0, sizeof(gotBuff));
             radio.read(gotBuff, sizeof(gotBuff));
+            printf("Got data\n\r");
+            while (Serial.read() == -1);
             radio.writeAckPayload(pipeNo, gotBuff, sizeof(gotBuff));
+            printf("Write ack\n\r");
         }
     }
 
