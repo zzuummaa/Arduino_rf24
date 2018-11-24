@@ -6,13 +6,13 @@
 
 const static byte ACK_PAYLOAD[] = {0xFF};
 
-RadioPort::RadioPort(): RF24(7, 8), timeout_mcs(20 * 1000lu), ack_timeout_msc(2 * 1000) {}
+RadioPort::RadioPort(): RF24(7, 8), timeout_mcs(10 * 1000lu), ack_timeout_msc(2 * 1000) {}
 
 void RadioPort::begin(role_e role) {
     RF24::begin();
     setAutoAck(true);
     enableAckPayload();               // Allow optional ack payloads
-    setRetries(15, 15);                 // Smallest time between retries, max no. of retries
+    setRetries(5, 15);                 // Smallest time between retries, max no. of retries
     enableDynamicPayloads();
     if (role == role_ping_out) {
         openWritingPipe(pipes[0]);
@@ -44,7 +44,6 @@ int RadioPort::transmit(uint8_t *buff, int buffLen, uint8_t **notWriten) {
 
     state = WRITE_PACKET;
     do {
-        delay(100);
         curTime = micros();
 
         maxPacketLen = writenLen + 31 <= buffLen ? 31 : buffLen - writenLen;
@@ -53,17 +52,16 @@ int RadioPort::transmit(uint8_t *buff, int buffLen, uint8_t **notWriten) {
         if (packetLen != -1) {
             buff += packetLen;
             writenLen += packetLen;
-            printf("maxPackLen: %d, currPackLen: %d, writtenBytes: %d, counter: %d\n\r", maxPacketLen, packetLen, writenLen, counter-1);
+            printf("maxPackLen: %d, currPackLen: %d, writtenBytes: %d, counter: %d\n\r", maxPacketLen, packetLen, writenLen, counter);
             if (writenLen == buffLen) break;
         }
 
         time += micros() - curTime;
     } while (time < timeout_mcs);
 
-    printf("writing end packets...\n\r");
-    do { counter = 0; } while (writePacket(buff, 0) != -2);
-
     if (buffLen == writenLen && notWriten != nullptr) {
+        printf("writing end packets...\n\r");
+        do { counter = 0; } while (writePacket(buff, 0) != -2);
         *notWriten = buff;
     }
 
@@ -102,9 +100,10 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
 
     } while (micros() - curTime < timeout);
 
-    printf("reading end packet...\n\r");
-    flush_rx();
-    do { counter = 0; } while (readPacket(buff, 0) != -1);
+    if (readLen == -2) {
+        printf("reading end packet...\n\r");
+        do { counter = 0; } while (readPacket(buff, 0) != -1);
+    }
 
     return usedLen;
 }
@@ -127,7 +126,10 @@ int RadioPort::writePacket(uint8_t* buff, int buffLen) {
 
     uint8_t ackPayload;
     read(&ackPayload, 1);
-    if (ackPayload == 0) return -2;
+    if (ackPayload == 0) {
+        printf("End ack packet received\n\r");
+        return -2;
+    }
     if (ackPayload != counter) {
         printf("err counter: %d, ackPayload: %d\n\r", counter, ackPayload);
         return -1;
@@ -146,14 +148,17 @@ int RadioPort::readPacket(uint8_t *buff, int buffLen) {
     uint8_t len = getDynamicPayloadSize();
 
     if (len == 0) {
-        printf("payloadLen: %d, buffLen: %d\n\r", len, buffLen);
+        printf("err payloadLen: %d, buffLen: %d\n\r", len, buffLen);
         return -1;
     }
 
     uint8_t inBuff[buffLen+1];
     read(inBuff, len);
     writeAckPayload(pipeNo, &counter, sizeof(counter));
-    if (len == 1) return -2;
+    if (len == 1) {
+        printf("End packet received\n\r");
+        return -2;
+    }
 
     if (inBuff[0] != counter) {
         printf("err counter: %d, payloadCounter: %d\n\r", counter, inBuff[0]);
@@ -161,7 +166,7 @@ int RadioPort::readPacket(uint8_t *buff, int buffLen) {
     }
 
     counter++;
-    if (buffLen > sizeof(inBuff)-1) {
+    if (buffLen >= sizeof(inBuff)-1) {
         memcpy(buff, inBuff+1, sizeof(inBuff)-1);
         return sizeof(inBuff)-1;
     } else {

@@ -44,8 +44,16 @@ void setup() {
     Serial.print(F("\n\rRF24/examples/RadioPort/\n\rROLE: "));
     Serial.println(role_friendly_name[role]);
 
-    radioPort.setTimeout(10lu * 1000lu);
+    radioPort.setTimeout(1000lu);
     radioPort.begin(role);
+
+    if (!radioPort.isChipConnected()) {
+        printf("RF24 isn't connected to SPI\n\r");
+    } else {
+        printf("RF24 connected to SPI\n\r");
+    }
+    while (!radioPort.isChipConnected());
+
     radioPort.printDetails();
     Serial.println();
 }
@@ -55,21 +63,19 @@ void loop() {
     if (role == role_ping_out) {
         int writenLen = radioPort.transmit(buff, sizeof(buff));
         if (writenLen > 0) printf("Writen %d bytes\r\n", writenLen);
-        delay(200);
+        delay(radioPort.getTimeout() + 1);
     }
 
     if (role == role_pong_back) {
         memset(pingInBuff, 0, sizeof(pingInBuff));
         int readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff));
         if (readLen > 0) {
-//            if (memcmp(buff, pingInBuff, sizeof(buff)) == 0) {
-//                printf("Read %d valid bytes.\r\n", readLen);
-//            } else {
-//                printf("Read %d bytes\r\n", readLen);
-//            }
+            if (memcmp(pingInBuff, buff, readLen) == 0) {
+                printf("Read %d valid bytes.\n\r", readLen);
+            } else {
+                printf("Read %d bytes\r\n", readLen);
+            }
         }
-
+        delay(radioPort.getTimeout() + 1);
     }
-
-    delay(60000);
 }
