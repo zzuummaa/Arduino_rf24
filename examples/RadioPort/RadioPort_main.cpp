@@ -20,7 +20,7 @@ const int role_pin = 5;
 const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
 role_e role = role_pong_back;                                              // The role of the current running sketch
 
-uint8_t buff[33];
+uint8_t buff[200];
 uint8_t pingInBuff[sizeof(buff)];
 char strBuf[sizeof(buff)*2 + 1];
 
@@ -44,6 +44,7 @@ void setup() {
     Serial.print(F("\n\rRF24/examples/RadioPort/\n\rROLE: "));
     Serial.println(role_friendly_name[role]);
 
+    radioPort.setTimeout(10lu * 1000lu);
     radioPort.begin(role);
     radioPort.printDetails();
     Serial.println();
@@ -54,20 +55,21 @@ void loop() {
     if (role == role_ping_out) {
         int writenLen = radioPort.transmit(buff, sizeof(buff));
         if (writenLen > 0) printf("Writen %d bytes\r\n", writenLen);
+        delay(200);
     }
 
     if (role == role_pong_back) {
         memset(pingInBuff, 0, sizeof(pingInBuff));
         int readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff));
         if (readLen > 0) {
-            if (memcmp(buff, pingInBuff, sizeof(buff)) == 0) {
-                printf("Read %d valid bytes.\r\n", readLen);
-            } else {
-                printf("Read %d bytes: 0x%s\r\n", readLen, hexStr(pingInBuff, sizeof(pingInBuff), strBuf));
-            }
+//            if (memcmp(buff, pingInBuff, sizeof(buff)) == 0) {
+//                printf("Read %d valid bytes.\r\n", readLen);
+//            } else {
+//                printf("Read %d bytes\r\n", readLen);
+//            }
         }
 
     }
 
-    delay(500);
+    delay(60000);
 }

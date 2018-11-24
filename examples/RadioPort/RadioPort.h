@@ -32,7 +32,7 @@ public:
 
     int receive(uint8_t* buff, int buffLen, unsigned long timeout = 0);
 
-    bool writePacket(uint8_t* buff, int buffLen);
+    int writePacket(uint8_t* buff, int buffLen);
 
     int readPacket(uint8_t* buff, int buffLen);
 
@@ -44,6 +44,7 @@ public:
         RF24::printDetails();
     }
 private:
+    uint8_t counter;
     State state;
     unsigned long ack_timeout_msc;
     unsigned long timeout_mcs;
