@@ -34,7 +34,7 @@ public:
 
     int writePacket(uint8_t* buff, int buffLen);
 
-    int readPacket(uint8_t* buff, int buffLen);
+    int readPacket(uint8_t* buff, uint8_t buffLen);
 
     void setTimeout(unsigned long timeout);
 

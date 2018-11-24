@@ -5,6 +5,7 @@
 #include "RadioPort.h"
 
 const static byte ACK_PAYLOAD[] = {0xFF};
+bool flag = false;
 
 RadioPort::RadioPort(): RF24(7, 8), timeout_mcs(10 * 1000lu), ack_timeout_msc(2 * 1000) {}
 
@@ -76,7 +77,7 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
     if (timeout == 0) timeout = timeout_mcs;
     unsigned long time = 0;
     unsigned long curTime;
-    int maxPacketLen;
+    uint8_t maxPacketLen;
     int readLen;
     int usedLen = 0;
     counter = 1;
@@ -88,13 +89,13 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
     curTime = micros();
     do {
 
-        maxPacketLen = usedLen + 31 <= buffLen ? 31 : buffLen - usedLen;
+        maxPacketLen = (uint8_t)(usedLen + 31 <= buffLen ? 31 : buffLen - usedLen);
         readLen = readPacket(buff, maxPacketLen);
         if (readLen == -2) break;
         if (readLen != -1) {
             buff += readLen;
             usedLen += readLen;
-            printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime);
+            //printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime);
             if (buffLen == usedLen) break;
         }
 
@@ -139,7 +140,12 @@ int RadioPort::writePacket(uint8_t* buff, int buffLen) {
     return buffLen;
 }
 
-int RadioPort::readPacket(uint8_t *buff, int buffLen) {
+int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
+    if (flag) {
+        printf("ReadPacket 200\n\r");
+        delay(30);
+    }
+
     byte pipeNo;
     if (!available(&pipeNo)) {
         return -1;
@@ -162,6 +168,7 @@ int RadioPort::readPacket(uint8_t *buff, int buffLen) {
 
     if (inBuff[0] != counter) {
         printf("err counter: %d, payloadCounter: %d\n\r", counter, inBuff[0]);
+        if (buffLen != 31) flag = true;
         return -1;
     }
 

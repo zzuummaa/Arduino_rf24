@@ -29,6 +29,9 @@ void setup() {
         buff[i] = (uint8_t)(i % UINT8_MAX);
     }
 
+    // Noise reset resist
+    pinMode(10, OUTPUT);
+
     pinMode(role_pin, INPUT);
     digitalWrite(role_pin, HIGH);
     delay(20); // Just to get a solid reading on the role pin
