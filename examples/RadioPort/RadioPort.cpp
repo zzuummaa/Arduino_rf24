@@ -95,7 +95,9 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
         if (readLen != -1) {
             buff += readLen;
             usedLen += readLen;
-            //printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime);
+//            printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime); // Reset
+            printf("readBytes: %d, counter: %d, time: %lu\n\r", usedLen, counter, micros() - curTime); // Not reset
+//            printf("maxPackLen: %d, curPackLen: %d\n\r", maxPacketLen, readLen); // Reset
             if (buffLen == usedLen) break;
         }
 
