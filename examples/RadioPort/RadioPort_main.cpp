@@ -7,7 +7,6 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
-#include "printf.h"
 #include "RadioPort.h"
 #include "hex_str.h"
 #include "defs.h"
@@ -40,10 +39,11 @@ void setup() {
     delay(20); // Just to get a solid reading on the role pin
 
     // read the address pin, establish our role
-    if (digitalRead(role_pin))
+    if (digitalRead(role_pin)) {
         role = Role::TRANSMITTER;
-    else
+    } else {
         role = Role::RECEIVER;
+    }
 
     Serial.begin(115200);
     printf_begin();
@@ -54,13 +54,11 @@ void setup() {
     radioPort.setTimeout(500lu);
     radioPort.begin(role);
 
-#if ENABLE_DEBUG
     if (!radioPort.isChipConnected()) {
-        printf("RF24 isn't connected to SPI\n\r");
+        printf_L("RF24 isn't connected to SPI\n\r");
     } else {
-        printf("RF24 connected to SPI\n\r");
+        printf_L("RF24 connected to SPI\n\r");
     }
-#endif
     while (!radioPort.isChipConnected());
 
 #if ENABLE_DEBUG
@@ -77,7 +75,7 @@ inline void transmitLogic() {
 
     if (sizeof(buff) > serialBytesLen + 2) {
         buff[serialBytesLen] = 0;
-        printf("'%s'\n\r", (char*)buff);
+        printf_L("'%s'\n\r", (char*)buff);
         buff[serialBytesLen] = '\n';
         buff[serialBytesLen+1] = '\r';
         buff[serialBytesLen+2] = 0;
@@ -86,13 +84,11 @@ inline void transmitLogic() {
         return;
     }
 
-    printf("Write %d bytes...\n\r", serialBytesLen);
+    printf_L("Write %d bytes...\n\r", serialBytesLen);
     curTime = micros();
     size_t writenLen = radioPort.transmit(buff, (size_t)serialBytesLen);
     if (writenLen > 0) {
-#if ENABLE_DEBUG
-        printf("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
-#endif
+        printf_L("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
     }
 
     if (writenLen != sizeof(buff)) delay(radioPort.getTimeout() + 1);
@@ -103,9 +99,7 @@ inline void receiveLogic() {
     curTime = micros();
     size_t readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff)-1);
     if (readLen > 0) {
-#if ENABLE_DEBUG
-        printf("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
-#endif
+        printf_L("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
         Serial.print((char*)pingInBuff);
         delay(radioPort.getTimeout());
     }

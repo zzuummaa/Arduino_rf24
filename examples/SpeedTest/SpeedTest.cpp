@@ -94,7 +94,7 @@ void setup() {
     radio.begin();
     radio.setAutoAck(true);
     radio.enableAckPayload();               // Allow optional ack payloads
-    radio.setRetries(5, 15);                 // Smallest time between retries, max no. of retries
+    radio.setRetries(15, 15);                 // Smallest time between retries, max no. of retries
     radio.enableDynamicPayloads();
     if (role == role_ping_out) {
         radio.openWritingPipe(pipes[0]);
@@ -133,9 +133,9 @@ void performTest(int payloadLen, unsigned long duration_ms) {
                 unsigned long tim = micros();
                 byte ackPayload;
                 radio.read(&ackPayload, sizeof(ackPayload));
-                if (ackPayload == 0xFF) {
+                if (ackPayload == counter[0]) {
                     successCount++;
-                    inc(counter, sizeof(counter));
+                    counter[0]++;
                 } else {
                     failCount++;
                 }
@@ -158,7 +158,7 @@ void performTest(int payloadLen, unsigned long duration_ms) {
 void loop(void) {
 
     if (role == role_ping_out) {
-        for (int i = 32; i >= 2; i -= 4) {
+        for (int i = 32; i >= 1; i -= 4) {
             performTest(i, 6000);
         }
         Serial.println("=======================");
@@ -176,6 +176,7 @@ void loop(void) {
             if (len == 0) continue;
             memset(counter, 0, sizeof(counter));
             radio.read(counter, len);
+            ackPayload = counter[0];
             radio.writeAckPayload(pipeNo, &ackPayload, sizeof(ackPayload));
         }
     }
