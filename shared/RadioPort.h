@@ -41,6 +41,7 @@ public:
     unsigned long getTimeout() const;
 
     void printDetails() {
+        printf("timeout\t\t = %lu ms\n\r", timeout_mcs / 1000);
         RF24::printDetails();
     }
 private:
@@ -52,5 +53,9 @@ private:
                          0x544d52687CLL};              // Radio pipe addresses for the 2 nodes to communicate.
 };
 
+#define RADIO_PORT_NON 0
+#define RADIO_PORT_INFO 1
+#define RADIO_PORT_DEBUG 2
+#define RADIO_PORT_LOG_TYPE RADIO_PORT_NON
 
 #endif //ARDUINO_RF24_RADIOPORT_H

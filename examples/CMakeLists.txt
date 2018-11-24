@@ -12,7 +12,7 @@ foreach(_D ${DIRS})
         file(GLOB_RECURSE HEADERS "${_d_name}/*.h" "${_d_name}/*.hpp")
         file(GLOB_RECURSE SKETCHES "${_d_name}/*.ino" "${_d_name}/*.pde")
 
-        add_arduino_executable(${_d_name} ${board_id} ${CPPS} ${HEADERS} ${SHARED_HEADERS})
+        add_arduino_executable(${_d_name} ${board_id} ${CPPS} ${HEADERS} ${SHARED_HEADERS} ${SHARED_SOURCES})
         if (SKETCHES)
             target_sketches(${_d_name} ${board_id} ${SKETCHES})
         endif()

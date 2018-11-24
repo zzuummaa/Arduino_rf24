@@ -10,6 +10,7 @@
 #include "printf.h"
 #include "RadioPort.h"
 #include "hex_str.h"
+#include "defs.h"
 
 RadioPort radioPort;
 
@@ -23,6 +24,8 @@ role_e role = role_pong_back;                                              // Th
 uint8_t buff[500];
 uint8_t pingInBuff[sizeof(buff)];
 char strBuf[sizeof(buff)*2 + 1];
+
+unsigned long curTime;
 
 void setup() {
     for (int i = 0; i < sizeof(buff); ++i) {
@@ -44,29 +47,40 @@ void setup() {
 
     Serial.begin(115200);
     printf_begin();
+#if ENABLE_DEBUG
     Serial.print(F("\n\rRF24/examples/RadioPort/\n\rROLE: "));
     Serial.println(role_friendly_name[role]);
-
-    radioPort.setTimeout(1000lu);
+#endif
+    radioPort.setTimeout(500lu);
     radioPort.begin(role);
 
+#if ENABLE_DEBUG
     if (!radioPort.isChipConnected()) {
         printf("RF24 isn't connected to SPI\n\r");
     } else {
         printf("RF24 connected to SPI\n\r");
     }
+#endif
     while (!radioPort.isChipConnected());
 
+#if ENABLE_DEBUG
     radioPort.printDetails();
     Serial.println();
+#endif
 }
 
 void loop() {
+    curTime = micros();
 
     if (role == role_ping_out) {
         int writenLen = radioPort.transmit(buff, sizeof(buff));
-        if (writenLen > 0) printf("Writen %d bytes\r\n", writenLen);
-        delay(radioPort.getTimeout() + 1);
+        if (writenLen > 0) {
+#if ENABLE_DEBUG
+            printf("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
+#endif
+        }
+
+        if (writenLen != sizeof(buff)) delay(radioPort.getTimeout() + 1);
     }
 
     if (role == role_pong_back) {
@@ -74,11 +88,15 @@ void loop() {
         int readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff));
         if (readLen > 0) {
             if (memcmp(pingInBuff, buff, (size_t)readLen) == 0) {
-                printf("Read %d valid bytes.\n\r", readLen);
+#if ENABLE_DEBUG
+                printf("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
+#endif
             } else {
-                printf("Read %d bytes\r\n", readLen);
+#if ENABLE_DEBUG
+                printf("Read %d bytes, time: %lu ms\r\n", readLen, (micros() - curTime) / 1000);
+#endif
             }
         }
-        delay(radioPort.getTimeout() + 1);
+        if (readLen != sizeof(pingInBuff)) delay(radioPort.getTimeout() + 1);
     }
 }

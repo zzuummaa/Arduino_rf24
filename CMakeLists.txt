@@ -13,6 +13,7 @@ endmacro()
 
 include_directories(shared)
 file(GLOB_RECURSE SHARED_HEADERS "shared/*.h")
+file(GLOB_RECURSE SHARED_SOURCES "shared/*.c" "shared/*.cpp")
 
 message(STATUS "ARDUINO_SDK_LIBRARIES_PATH: ${ARDUINO_SDK_LIBRARIES_PATH}")
 add_subdirectory(tests)

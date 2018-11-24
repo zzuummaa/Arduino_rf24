@@ -4,8 +4,11 @@
 
 #include "RadioPort.h"
 
+#define DEBUG RADIO_PORT_DEBUG
+#define INFO RADIO_PORT_INFO
+#define LOG RADIO_PORT_LOG_TYPE
+
 const static byte ACK_PAYLOAD[] = {0xFF};
-bool flag = false;
 
 RadioPort::RadioPort(): RF24(7, 8), timeout_mcs(10 * 1000lu), ack_timeout_msc(2 * 1000) {}
 
@@ -50,10 +53,12 @@ int RadioPort::transmit(uint8_t *buff, int buffLen, uint8_t **notWriten) {
         maxPacketLen = writenLen + 31 <= buffLen ? 31 : buffLen - writenLen;
         packetLen = writePacket(buff, maxPacketLen);
         if (packetLen == -2) break;
-        if (packetLen != -1) {
+        if (packetLen > 0) {
             buff += packetLen;
             writenLen += packetLen;
+#if LOG == DEBUG || LOG == INFO
             printf("maxPackLen: %d, currPackLen: %d, writtenBytes: %d, counter: %d\n\r", maxPacketLen, packetLen, writenLen, counter);
+#endif
             if (writenLen == buffLen) break;
         }
 
@@ -61,7 +66,9 @@ int RadioPort::transmit(uint8_t *buff, int buffLen, uint8_t **notWriten) {
     } while (time < timeout_mcs);
 
     if (buffLen == writenLen && notWriten != nullptr) {
+#if LOG == DEBUG || LOG == INFO
         printf("writing end packets...\n\r");
+#endif
         do { counter = 0; } while (writePacket(buff, 0) != -2);
         *notWriten = buff;
     }
@@ -92,19 +99,23 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
         maxPacketLen = (uint8_t)(usedLen + 31 <= buffLen ? 31 : buffLen - usedLen);
         readLen = readPacket(buff, maxPacketLen);
         if (readLen == -2) break;
-        if (readLen != -1) {
+        if (readLen > 0) {
             buff += readLen;
             usedLen += readLen;
+#if LOG == DEBUG || LOG == INFO
 //            printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime); // Reset
             printf("readBytes: %d, counter: %d, time: %lu\n\r", usedLen, counter, micros() - curTime); // Not reset
 //            printf("maxPackLen: %d, curPackLen: %d\n\r", maxPacketLen, readLen); // Reset
+#endif
             if (buffLen == usedLen) break;
         }
 
     } while (micros() - curTime < timeout);
 
     if (readLen == -2) {
+#if LOG == DEBUG || LOG == INFO
         printf("reading end packet...\n\r");
+#endif
         do { counter = 0; } while (readPacket(buff, 0) != -1);
     }
 
@@ -118,23 +129,31 @@ int RadioPort::writePacket(uint8_t* buff, int buffLen) {
 
     stopListening();
     if (!write(&outBuff, sizeof(outBuff))) {
+#if LOG == DEBUG
         printf("err write\n\r");
+#endif
         return -1;
     }
 
     if (!isAckPayloadAvailable()) {
+#if LOG == DEBUG
         printf("err no ack\n\r");
+#endif
         return -1;
     }
 
     uint8_t ackPayload;
     read(&ackPayload, 1);
     if (ackPayload == 0) {
+#if LOG == DEBUG
         printf("End ack packet received\n\r");
+#endif
         return -2;
     }
     if (ackPayload != counter) {
+#if LOG == DEBUG
         printf("err counter: %d, ackPayload: %d\n\r", counter, ackPayload);
+#endif
         return -1;
     }
 
@@ -143,11 +162,6 @@ int RadioPort::writePacket(uint8_t* buff, int buffLen) {
 }
 
 int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
-    if (flag) {
-        printf("ReadPacket 200\n\r");
-        delay(30);
-    }
-
     byte pipeNo;
     if (!available(&pipeNo)) {
         return -1;
@@ -156,7 +170,9 @@ int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
     uint8_t len = getDynamicPayloadSize();
 
     if (len == 0) {
+#if LOG == DEBUG
         printf("err payloadLen: %d, buffLen: %d\n\r", len, buffLen);
+#endif
         return -1;
     }
 
@@ -164,13 +180,16 @@ int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
     read(inBuff, len);
     writeAckPayload(pipeNo, &counter, sizeof(counter));
     if (len == 1) {
+#if LOG == DEBUG
         printf("End packet received\n\r");
+#endif
         return -2;
     }
 
     if (inBuff[0] != counter) {
+#if LOG == DEBUG
         printf("err counter: %d, payloadCounter: %d\n\r", counter, inBuff[0]);
-        if (buffLen != 31) flag = true;
+#endif
         return -1;
     }
 
@@ -180,7 +199,9 @@ int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
         return sizeof(inBuff)-1;
     } else {
         memcpy(buff, inBuff+1, (size_t)buffLen);
+#if LOG == DEBUG
         printf("err buffLen: %d, payloadLen: %d\n\r", buffLen, len);
+#endif
         return buffLen;
     }
 }
