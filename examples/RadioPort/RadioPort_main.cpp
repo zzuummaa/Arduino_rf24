@@ -19,10 +19,10 @@ RadioPort radioPort;
 const int role_pin = 5;
 
 const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
-role_e role = role_pong_back;                                              // The role of the current running sketch
+Role role;                                           // The role of the current running sketch
 
 uint8_t buff[500];
-uint8_t pingInBuff[sizeof(buff)];
+uint8_t pingInBuff[sizeof(buff)+1];
 char strBuf[sizeof(buff)*2 + 1];
 
 unsigned long curTime;
@@ -41,9 +41,9 @@ void setup() {
 
     // read the address pin, establish our role
     if (digitalRead(role_pin))
-        role = role_ping_out;
+        role = Role::TRANSMITTER;
     else
-        role = role_pong_back;
+        role = Role::RECEIVER;
 
     Serial.begin(115200);
     printf_begin();
@@ -69,34 +69,81 @@ void setup() {
 #endif
 }
 
-void loop() {
+int readline(char *buffer, int len, bool * isEndLine = nullptr);
+
+inline void transmitLogic() {
+    int serialBytesLen = readline((char*)buff, sizeof(buff));
+    if (serialBytesLen <= 0) return;
+
+    if (sizeof(buff) > serialBytesLen + 2) {
+        buff[serialBytesLen] = 0;
+        printf("'%s'\n\r", (char*)buff);
+        buff[serialBytesLen] = '\n';
+        buff[serialBytesLen+1] = '\r';
+        buff[serialBytesLen+2] = 0;
+        serialBytesLen += 2;
+    } else {
+        return;
+    }
+
+    printf("Write %d bytes...\n\r", serialBytesLen);
     curTime = micros();
-
-    if (role == role_ping_out) {
-        int writenLen = radioPort.transmit(buff, sizeof(buff));
-        if (writenLen > 0) {
+    size_t writenLen = radioPort.transmit(buff, (size_t)serialBytesLen);
+    if (writenLen > 0) {
 #if ENABLE_DEBUG
-            printf("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
+        printf("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
 #endif
-        }
-
-        if (writenLen != sizeof(buff)) delay(radioPort.getTimeout() + 1);
     }
 
-    if (role == role_pong_back) {
-        memset(pingInBuff, 0, sizeof(pingInBuff));
-        int readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff));
-        if (readLen > 0) {
-            if (memcmp(pingInBuff, buff, (size_t)readLen) == 0) {
+    if (writenLen != sizeof(buff)) delay(radioPort.getTimeout() + 1);
+}
+
+inline void receiveLogic() {
+    memset(pingInBuff, 0, sizeof(pingInBuff));
+    curTime = micros();
+    size_t readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff)-1);
+    if (readLen > 0) {
 #if ENABLE_DEBUG
-                printf("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
+        printf("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
 #endif
-            } else {
-#if ENABLE_DEBUG
-                printf("Read %d bytes, time: %lu ms\r\n", readLen, (micros() - curTime) / 1000);
-#endif
-            }
-        }
-        if (readLen != sizeof(pingInBuff)) delay(radioPort.getTimeout() + 1);
+        Serial.print((char*)pingInBuff);
+        delay(radioPort.getTimeout());
     }
+
+}
+
+void loop() {
+    if (role == Role::TRANSMITTER) {
+        transmitLogic();
+    }
+
+    if (role == Role::RECEIVER) {
+        receiveLogic();
+    }
+}
+
+inline int readline(char *buffer, int len, bool * isEndLine) {
+    int ch;
+    char* p = buffer;
+    if (isEndLine != nullptr) *isEndLine = false;
+
+    while (p - buffer < len) {
+        ch = Serial.read();
+        if (ch == -1) continue;
+        if (ch != '\r' && ch != '\n') {
+            Serial.print((char)ch);
+            *p++ = (char)ch;
+        }
+
+        if (ch == '\n' || ch == '\r') {
+            int tmp = Serial.peek();
+            if (tmp == '\n' || tmp == '\r') Serial.read();
+            Serial.println();
+            if (isEndLine != nullptr) *isEndLine = true;
+            printf("p - buffer = %d\n\r", (int)(p - buffer));
+            return (int)(p - buffer);
+        }
+    }
+
+    return len;
 }

@@ -12,13 +12,13 @@ const static byte ACK_PAYLOAD[] = {0xFF};
 
 RadioPort::RadioPort(): RF24(7, 8), timeout_mcs(10 * 1000lu), ack_timeout_msc(2 * 1000) {}
 
-void RadioPort::begin(role_e role) {
+void RadioPort::begin(Role role) {
     RF24::begin();
     setAutoAck(true);
     enableAckPayload();               // Allow optional ack payloads
     setRetries(5, 15);                 // Smallest time between retries, max no. of retries
     enableDynamicPayloads();
-    if (role == role_ping_out) {
+    if (role == TRANSMITTER) {
         openWritingPipe(pipes[0]);
         openReadingPipe(1, pipes[1]);
     } else {
@@ -29,17 +29,12 @@ void RadioPort::begin(role_e role) {
     startListening();
 }
 
-int RadioPort::transmit(uint8_t *buff, int buffLen, uint8_t **notWriten) {
+size_t RadioPort::transmit(uint8_t *buff, size_t buffLen, uint8_t **notWriten) {
     unsigned long time = 0;
     unsigned long curTime;
-    unsigned long ackTime = 0;
     int packetLen;
-    int writenLen = 0;
+    size_t writenLen = 0;
     int maxPacketLen;
-    byte ackPayload;
-    bool isEnd = false;
-    bool status;
-    bool isNeedACK = false;
     counter = 1;
 
     stopListening();
@@ -80,13 +75,13 @@ void RadioPort::setTimeout(unsigned long timeout) {
     this->timeout_mcs = timeout * 1000lu;
 }
 
-int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
+size_t RadioPort::receive(uint8_t *buff, size_t buffLen, unsigned long timeout) {
     if (timeout == 0) timeout = timeout_mcs;
     unsigned long time = 0;
     unsigned long curTime;
     uint8_t maxPacketLen;
     int readLen;
-    int usedLen = 0;
+    size_t usedLen = 0;
     counter = 1;
 
     flush_rx();
@@ -104,7 +99,7 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
             usedLen += readLen;
 #if LOG == DEBUG || LOG == INFO
 //            printf("maxPackLen: %d, curPackLen: %d, readBytes: %d, counter: %d, time: %lu\n\r", maxPacketLen, readLen, usedLen, counter, micros() - curTime); // Reset
-            printf("readBytes: %d, counter: %d, time: %lu\n\r", usedLen, counter, micros() - curTime); // Not reset
+            printf("readNow: %d, readAllBytes: %d, counter: %d, time: %lu\n\r", readLen, usedLen, counter, micros() - curTime); // Not reset
 //            printf("maxPackLen: %d, curPackLen: %d\n\r", maxPacketLen, readLen); // Reset
 #endif
             if (buffLen == usedLen) break;
@@ -118,6 +113,8 @@ int RadioPort::receive(uint8_t *buff, int buffLen, unsigned long timeout) {
 #endif
         do { counter = 0; } while (readPacket(buff, 0) != -1);
     }
+
+    stopListening();
 
     return usedLen;
 }
@@ -176,7 +173,7 @@ int RadioPort::readPacket(uint8_t *buff, uint8_t buffLen) {
         return -1;
     }
 
-    uint8_t inBuff[buffLen+1];
+    uint8_t inBuff[len];
     read(inBuff, len);
     writeAckPayload(pipeNo, &counter, sizeof(counter));
     if (len == 1) {

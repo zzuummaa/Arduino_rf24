@@ -5,14 +5,13 @@
 #ifndef ARDUINO_RF24_RADIOPORT_H
 #define ARDUINO_RF24_RADIOPORT_H
 
-
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
 
-typedef enum {
-    role_ping_out = 1, role_pong_back
-} role_e;                 // The various roles supported by this sketch
+enum Role {
+    TRANSMITTER = 1, RECEIVER
+};                 // The various roles supported by this sketch
 
 class RadioPort: public RF24 {
 public:
@@ -26,11 +25,11 @@ public:
 
     RadioPort();
 
-    void begin(role_e role);
+    void begin(Role role);
 
-    int transmit(uint8_t* buff, int buffLen, uint8_t **notWriten = nullptr);
+    size_t transmit(uint8_t *buff, size_t buffLen, uint8_t **notWriten = nullptr);
 
-    int receive(uint8_t* buff, int buffLen, unsigned long timeout = 0);
+    size_t receive(uint8_t *buff, size_t buffLen, unsigned long timeout = 0);
 
     int writePacket(uint8_t* buff, int buffLen);
 
@@ -56,6 +55,7 @@ private:
 #define RADIO_PORT_NON 0
 #define RADIO_PORT_INFO 1
 #define RADIO_PORT_DEBUG 2
+
 #define RADIO_PORT_LOG_TYPE RADIO_PORT_NON
 
 #endif //ARDUINO_RF24_RADIOPORT_H
