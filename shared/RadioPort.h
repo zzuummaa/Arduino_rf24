@@ -27,7 +27,7 @@ public:
 
     void begin(Role role);
 
-    size_t transmit(uint8_t *buff, size_t buffLen, uint8_t **notWriten = nullptr);
+    size_t transmit(uint8_t *buff, size_t buffLen);
 
     size_t receive(uint8_t *buff, size_t buffLen, unsigned long timeout = 0);
 
@@ -44,8 +44,8 @@ public:
         RF24::printDetails();
     }
 private:
+    unsigned long curTime;
     uint8_t counter;
-    State state;
     unsigned long ack_timeout_msc;
     unsigned long timeout_mcs;
     uint64_t pipes[2] = {0xABCDABCD71LL,
@@ -54,22 +54,12 @@ private:
 
 inline int printf_moc(const char *__fmt, ...);
 
-#define RADIO_PORT_NON 0
-#define RADIO_PORT_INFO 1
-#define RADIO_PORT_DEBUG 2
+enum LogType {
+    NON = 0,
+    INFO,
+    DEBUG
+};
 
-#define RADIO_PORT_LOG_TYPE RADIO_PORT_INFO
-
-#if RADIO_PORT_LOG_TYPE > RADIO_PORT_NON
-    #define printf_I(fmt, args...) printf(fmt, ## args)
-    #if RADIO_PORT_LOG_TYPE > RADIO_PORT_INFO
-        #define printf_D(fmt, args...) printf(fmt, ## args)
-    #else
-        #define printf_D(fmt, args...) printf_moc(fmt, ## args)
-    #endif
-#else
-    #define printf_I(fmt, args...) printf_moc(fmt, ## args)
-    #define printf_D(fmt, args...) printf_moc(fmt, ## args)
-#endif
+#define RADIO_PORT_LOG_TYPE LogType::NON
 
 #endif //ARDUINO_RF24_RADIOPORT_H

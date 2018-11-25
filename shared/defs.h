@@ -5,15 +5,13 @@
 #ifndef ARDUINO_RF24_DEFS_H
 #define ARDUINO_RF24_DEFS_H
 
-#include <printf.h>
+#define SERIAL_TX_BUFFER_SIZE 128
+#define SERIAL_RX_BUFFER_SIZE 128
+#include "Arduino.h"
+#include "printf.h"
 
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 0
 
-#if ENABLE_DEBUG == 1
-    #define printf_L(fmt, args...) printf(fmt, ## args)
-#elif ENABLE_DEBUG == 0
-    inline int printf_moc(const char *__fmt, ...) {};
-    #define printf_L(f_, ...) printf_moc((f_), ##__VA_ARGS__)
-#endif
+#define printf_L(fmt, args...) if (ENABLE_DEBUG == 1) printf(fmt, ## args)
 
 #endif //ARDUINO_RF24_DEFS_H

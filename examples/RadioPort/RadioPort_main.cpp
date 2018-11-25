@@ -2,15 +2,12 @@
 // Created by Stephan on 23.11.2018.
 //
 
-#include "Arduino.h"
-
+#include "defs.h"
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
 #include "hex_str.h"
-
 #include "RadioPort.h"
-#include "defs.h"
 
 RadioPort radioPort;
 
@@ -18,12 +15,10 @@ RadioPort radioPort;
 // Leave open to be the 'ping' transmitter
 const int role_pin = 5;
 
-const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
+static const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
 Role role;                                           // The role of the current running sketch
 
-uint8_t buff[500];
-uint8_t pingInBuff[sizeof(buff)+1];
-char strBuf[sizeof(buff)*2 + 1];
+uint8_t buff[500 + 1];
 
 unsigned long curTime;
 
@@ -47,11 +42,13 @@ void setup() {
     }
 
     Serial.begin(115200);
-#if ENABLE_DEBUG
     printf_begin();
+#if ENABLE_DEBUG
     Serial.print(F("\n\rRF24/examples/RadioPort/\n\rROLE: "));
     Serial.println(role_friendly_name[role]);
+    printf_L("SERIAL_TX_BUFFER_SIZE: %d\n\r", SERIAL_TX_BUFFER_SIZE);
 #endif
+
     radioPort.setTimeout(50lu);
     radioPort.begin(role);
 
@@ -64,11 +61,11 @@ void setup() {
 
 #if ENABLE_DEBUG
     radioPort.printDetails();
-    Serial.println();
+    printf_L("\n\r");
 #endif
 }
 
-int readline(char *buffer, int len, bool * isEndLine = nullptr);
+int readline(char *buffer, int len);
 
 inline void transmitLogic() {
     int serialBytesLen = readline((char*)buff, sizeof(buff));
@@ -96,12 +93,13 @@ inline void transmitLogic() {
 }
 
 inline void receiveLogic() {
-    memset(pingInBuff, 0, sizeof(pingInBuff));
+    memset(buff, 0, sizeof(buff));
     curTime = micros();
-    size_t readLen = radioPort.receive(pingInBuff, sizeof(pingInBuff)-1);
+    size_t readLen = radioPort.receive(buff, sizeof(buff)-1);
     if (readLen > 0) {
         printf_L("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
-        Serial.print((char*)pingInBuff);
+        Serial.print((char*)buff);
+        Serial.flush();
         delay(radioPort.getTimeout());
     }
 
@@ -117,10 +115,9 @@ void loop() {
     }
 }
 
-inline int readline(char *buffer, int len, bool * isEndLine) {
+inline int readline(char *buffer, int len) {
     int ch;
     char* p = buffer;
-    if (isEndLine != nullptr) *isEndLine = false;
 
     while (p - buffer < len) {
         ch = Serial.read();
@@ -134,8 +131,8 @@ inline int readline(char *buffer, int len, bool * isEndLine) {
             int tmp = Serial.peek();
             if (tmp == '\n' || tmp == '\r') Serial.read();
             Serial.println();
-            if (isEndLine != nullptr) *isEndLine = true;
-            printf("p - buffer = %d\n\r", (int)(p - buffer));
+            Serial.flush();
+            printf_L("p - buffer = %d\n\r", (int)(p - buffer));
             return (int)(p - buffer);
         }
     }
