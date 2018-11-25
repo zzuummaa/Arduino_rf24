@@ -1,5 +1,8 @@
 import serial
 import time
+import logging
+
+logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
 
 def read_data(ser):
@@ -9,16 +12,16 @@ def read_data(ser):
     start_time = time.clock()
     while time.clock() - start_time < 0.4 or ser.in_waiting:
         one_byte = ser.read(1)
-        # print(one_byte)
+        logging.debug(one_byte)
         if one_byte == b"\n":
             if is_n:
-                # print("pong")
+                logging.info("pong")
                 return pong
             else:
                 is_r = True
         elif one_byte == b"\r":
             if is_r:
-                # print("pong")
+                logging.info("pong")
                 return pong
             else:
                 is_n = True
@@ -78,27 +81,27 @@ for line in lines:
         line = b' ' + line
 
     data5Out = line
-    print(data5Out)
-    print("line len: " + str(len(line)))
+    logging.info(data5Out)
+    logging.info("line len: " + str(len(line)))
     eq = ser5.write(data5Out + b'\n') == len(data5Out) + 1
     if not eq:
         write_err_count += 1
-        print('err write data')
-    print("write to COM5: " + str(eq))
+        logging.warning('err write data')
+    logging.info("write to COM5: " + str(eq))
     delay = len(line) / speed * 2
-    print("waiting transmitter " + str(int(delay * 1000)) + " ms...")
+    logging.info("waiting transmitter " + str(int(delay * 1000)) + " ms...")
     ser5.flush()
 
     data5In = read_data(ser5)
-    print(data5In)
+    # print(data5In)
     # data5In = ser5.readline()
     if data5In is None:
         write_err_count += 1
-        print("read from COM5: " + str(False))
-        print()
+        logging.warning("read from COM5: " + str(False))
+        logging.warning('')
         continue
     data5In = data5In
-    print("read from COM5: " + str(data5Out == data5In))
+    logging.info("read from COM5: " + str(data5Out == data5In))
 
     delay = 0.01 * len(line) / 32 + 0.1
     time.sleep(delay)
@@ -106,18 +109,20 @@ for line in lines:
     data6In = read_data(ser6)
     if data6In is None:
         read_err_count += 1
-        print('err read data')
-        print()
+        logging.warning('err read data')
+        logging.warning('')
         continue
 
     f_out.write(data6In + b'\r\n')
-    print("waiting radio " + str(int(delay * 1000)) + " ms...")
-    print(data6In)
+    logging.info("waiting radio " + str(int(delay * 1000)) + " ms...")
+    logging.info(data6In)
     eq = data6In == data5Out
     if not eq:
         read_err_count += 1
-    print("read from COM6: " + str(eq))
-    print()
+        logging.warning("read from COM6: " + str(eq))
+    else:
+        logging.info("read from COM6: " + str(eq))
+    logging.info('')
 
 print("================================================")
 print("write_err_count: " + str(write_err_count))
