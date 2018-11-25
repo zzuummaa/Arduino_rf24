@@ -7,8 +7,9 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
-#include "RadioPort.h"
 #include "hex_str.h"
+
+#include "RadioPort.h"
 #include "defs.h"
 
 RadioPort radioPort;
@@ -46,12 +47,12 @@ void setup() {
     }
 
     Serial.begin(115200);
-    printf_begin();
 #if ENABLE_DEBUG
+    printf_begin();
     Serial.print(F("\n\rRF24/examples/RadioPort/\n\rROLE: "));
     Serial.println(role_friendly_name[role]);
 #endif
-    radioPort.setTimeout(500lu);
+    radioPort.setTimeout(50lu);
     radioPort.begin(role);
 
     if (!radioPort.isChipConnected()) {

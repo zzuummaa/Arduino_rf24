@@ -52,10 +52,24 @@ private:
                          0x544d52687CLL};              // Radio pipe addresses for the 2 nodes to communicate.
 };
 
+inline int printf_moc(const char *__fmt, ...);
+
 #define RADIO_PORT_NON 0
 #define RADIO_PORT_INFO 1
 #define RADIO_PORT_DEBUG 2
 
-#define RADIO_PORT_LOG_TYPE RADIO_PORT_NON
+#define RADIO_PORT_LOG_TYPE RADIO_PORT_INFO
+
+#if RADIO_PORT_LOG_TYPE > RADIO_PORT_NON
+    #define printf_I(fmt, args...) printf(fmt, ## args)
+    #if RADIO_PORT_LOG_TYPE > RADIO_PORT_INFO
+        #define printf_D(fmt, args...) printf(fmt, ## args)
+    #else
+        #define printf_D(fmt, args...) printf_moc(fmt, ## args)
+    #endif
+#else
+    #define printf_I(fmt, args...) printf_moc(fmt, ## args)
+    #define printf_D(fmt, args...) printf_moc(fmt, ## args)
+#endif
 
 #endif //ARDUINO_RF24_RADIOPORT_H

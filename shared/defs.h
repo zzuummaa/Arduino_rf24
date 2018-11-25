@@ -5,14 +5,14 @@
 #ifndef ARDUINO_RF24_DEFS_H
 #define ARDUINO_RF24_DEFS_H
 
-#define ENABLE_DEBUG 0
+#include <printf.h>
+
+#define ENABLE_DEBUG 1
 
 #if ENABLE_DEBUG == 1
-    #include "printf.h"
-    #define printf_L(f_, ...) printf((f_), ##__VA_ARGS__)
+    #define printf_L(fmt, args...) printf(fmt, ## args)
 #elif ENABLE_DEBUG == 0
-    inline void printf_moc(const char *__fmt, ...) {};
-    inline void printf_begin(void) {}
+    inline int printf_moc(const char *__fmt, ...) {};
     #define printf_L(f_, ...) printf_moc((f_), ##__VA_ARGS__)
 #endif
 
