@@ -9,6 +9,10 @@
 #include "hex_str.h"
 #include "RadioPort.h"
 
+#define ASCI_NAK (uint8_t)0x15
+
+uint8_t magicWord[4] = {0x01, 0x02, 0x03, 0x04};
+
 RadioPort radioPort;
 
 // sets the role of this unit in hardware.  Connect to GND to be the 'pong' receiver
@@ -18,9 +22,11 @@ const int role_pin = 5;
 static const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
 Role role;                                           // The role of the current running sketch
 
-uint8_t buff[256 + 1];
+uint8_t buff[500 + 1];
 
 unsigned long curTime;
+
+boolean isOk = false;
 
 void setup() {
     for (int i = 0; i < sizeof(buff); ++i) {
@@ -65,10 +71,10 @@ void setup() {
 #endif
 }
 
-int readLine(char *buffer, int len);
+int nextSerialPacket(char *buffer, int len);
 
 inline void transmitLogic() {
-    int serialBytesLen = readLine((char *) buff, sizeof(buff));
+    int serialBytesLen = nextSerialPacket((char *) buff, sizeof(buff));
     if (serialBytesLen < 0) return;
 
     if (sizeof(buff) > serialBytesLen + 2) {
@@ -84,29 +90,32 @@ inline void transmitLogic() {
 
     printf_L("Write %d bytes...\n\r", serialBytesLen);
     curTime = micros();
-    size_t writenLen = radioPort.transmit(buff, (size_t)serialBytesLen);
-    if (writenLen > 0) {
+    size_t writenLen = radioPort.transmit(buff, (size_t)serialBytesLen, &isOk);
+    if (isOk) {
         Serial.write(buff, writenLen);
         Serial.flush();
         printf_L("Writen %d bytes, time: %lu ms\r\n", writenLen, (micros() - curTime) / 1000);
+    } else {
+        Serial.write(ASCI_NAK);
+        delay(radioPort.getTimeout() + 1);
     }
-
-    if (writenLen != sizeof(buff)) delay(radioPort.getTimeout() + 1);
 }
 
 inline void receiveLogic() {
     memset(buff, 0, sizeof(buff));
     curTime = micros();
-    size_t readLen = radioPort.receive(buff, sizeof(buff)-1);
-    if (readLen > 0) {
+    size_t readLen = radioPort.receive(buff, sizeof(buff)-1, &isOk);
+    if (isOk) {
         printf_L("Read %d valid bytes, time: %lu ms\n\r", readLen, (micros() - curTime) / 1000);
         if (readLen >= 2 & buff[readLen-2] == '\r' & buff[readLen-1] == '\n') {
             Serial.print((char*)buff);
             Serial.flush();
         }
+    } else {
+        Serial.write(ASCI_NAK);
+        Serial.flush();
         delay(radioPort.getTimeout());
     }
-
 }
 
 void loop() {
@@ -119,23 +128,9 @@ void loop() {
     }
 }
 
-inline int readLine(char *buffer, int len) {
-    int ch;
-    char* p = buffer;
-
-    while (p - buffer < len) {
-        ch = Serial.read();
-        if (ch == -1) continue;
-        if (ch != '\r' && ch != '\n') {
-            *p++ = (char)ch;
-        }
-
-        if (ch == '\n' || ch == '\r') {
-            int tmp = Serial.peek();
-            if (tmp == '\n' || tmp == '\r') Serial.read();
-            printf_L("p - buffer = %d\n\r", (int)(p - buffer));
-            return (int)(p - buffer);
-        }
+inline int nextSerialPacket(char *buffer, int len) {
+    if (!Serial.find(magicWord, sizeof(magicWord))) {
+        return 0;
     }
 
     return len;
