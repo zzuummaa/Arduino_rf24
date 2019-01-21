@@ -27,9 +27,9 @@ public:
 
     void begin(Role role);
 
-    size_t transmit(uint8_t *buff, size_t buffLen);
+    size_t transmit(uint8_t *buff, size_t buffLen, boolean* isOk = nullptr);
 
-    size_t receive(uint8_t *buff, size_t buffLen, unsigned long timeout = 0);
+    size_t receive(uint8_t *buff, size_t buffLen, boolean* isOk = nullptr, unsigned long timeout = 0);
 
     int writePacket(uint8_t* buff, int buffLen);
 
@@ -60,6 +60,6 @@ enum LogType {
     DEBUG
 };
 
-#define RADIO_PORT_LOG_TYPE LogType::NON
+#define RADIO_PORT_LOG_TYPE LogType::INFO
 
 #endif //ARDUINO_RF24_RADIOPORT_H
