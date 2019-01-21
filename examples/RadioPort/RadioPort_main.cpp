@@ -22,7 +22,7 @@ const int role_pin = 5;
 static const char *role_friendly_name[] = {"invalid", "Ping out", "Pong back"};  // The debug-friendly names of those roles
 Role role;                                           // The role of the current running sketch
 
-uint8_t buff[500 + 1];
+uint8_t buff[256 + 1];
 
 unsigned long curTime;
 
@@ -55,7 +55,7 @@ void setup() {
     printf_L("SERIAL_TX_BUFFER_SIZE: %d\n\r", SERIAL_TX_BUFFER_SIZE);
 #endif
 
-    radioPort.setTimeout(100lu);
+    radioPort.setTimeout(50lu);
     radioPort.begin(role);
 
     if (!radioPort.isChipConnected()) {
@@ -71,10 +71,10 @@ void setup() {
 #endif
 }
 
-int nextSerialPacket(char *buffer, int len);
+int readline(char *buffer, int len);
 
 inline void transmitLogic() {
-    int serialBytesLen = nextSerialPacket((char *) buff, sizeof(buff));
+    int serialBytesLen = readline((char *) buff, sizeof(buff));
     if (serialBytesLen < 0) return;
 
     if (sizeof(buff) > serialBytesLen + 2) {
@@ -112,8 +112,6 @@ inline void receiveLogic() {
             Serial.flush();
         }
     } else {
-        Serial.write(ASCI_NAK);
-        Serial.flush();
         delay(radioPort.getTimeout());
     }
 }
@@ -128,9 +126,26 @@ void loop() {
     }
 }
 
-inline int nextSerialPacket(char *buffer, int len) {
-    if (!Serial.find(magicWord, sizeof(magicWord))) {
-        return 0;
+inline int readline(char *buffer, int len) {
+    int ch;
+    char* p = buffer;
+
+    while (p - buffer < len) {
+        ch = Serial.read();
+        if (ch == -1) continue;
+        if (ch != '\r' && ch != '\n') {
+            Serial.print((char)ch);
+            *p++ = (char)ch;
+        }
+
+        if (ch == '\n' || ch == '\r') {
+            int tmp = Serial.peek();
+            if (tmp == '\n' || tmp == '\r') Serial.read();
+            Serial.println();
+            Serial.flush();
+            printf_L("p - buffer = %d\n\r", (int)(p - buffer));
+            return (int)(p - buffer);
+        }
     }
 
     return len;

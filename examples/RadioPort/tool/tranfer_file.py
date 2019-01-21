@@ -2,15 +2,15 @@ import serial
 import time
 import logging
 
-logging.basicConfig(format='%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
 
-def read_data(ser):
+def read_data(ser, timeout):
     pong = b""
     is_r = False
     is_n = False
     start_time = time.clock()
-    while time.clock() - start_time < 0.2 or ser.in_waiting:
+    while time.clock() - start_time < timeout or ser.in_waiting:
         one_byte = ser.read(1)
         logging.debug(one_byte)
         if one_byte == 0x15:
@@ -65,7 +65,7 @@ ser6.setDTR(False)
 ser6.setRTS(False)
 ser6.open()
 
-time.sleep(1)
+time.sleep(1.5)
 
 fCounter = 0
 srcData = open("MMWMessage.h", "rb").read()
@@ -92,11 +92,11 @@ while fCounter < linesSize:
         write_err_count += 1
         logging.warning('err write data')
     logging.info("write to COM5: " + str(eq))
-    delay = len(line) / speed * 3
+    delay = (len(line) / 31 + 1) * 0.1
     logging.info("waiting transmitter " + str(int(delay * 1000)) + " ms...")
     ser5.flush()
 
-    data5In = read_data(ser5)
+    data5In = read_data(ser5, delay)
     logging.info(data5In)
     # data5In = ser5.readline()
     if data5In is None:
@@ -116,11 +116,10 @@ while fCounter < linesSize:
     data5In = data5In
     logging.info("read from COM5: " + str(data5Out == data5In))
 
-    delay = 0.01 * len(line) / 32 + 0.1
+    delay = 0.01 * (len(line) / 31 + 1)
     logging.info("waiting radio " + str(int(delay * 1000)) + " ms...")
-    time.sleep(delay)
     # data6In = ser6.readline()
-    data6In = read_data(ser6)
+    data6In = read_data(ser6, delay)
     if data6In is None:
         read_err_count += 1
         logging.warning('err read data')
@@ -133,7 +132,7 @@ while fCounter < linesSize:
     eq = data6In == data5Out
     if not eq:
         read_err_count += 1
-        logging.warning("read from COM6: " + str(eq))
+        logging.warning("read from COM6: not eq")
     else:
         logging.info("read from COM6: " + str(eq))
     logging.info('')
